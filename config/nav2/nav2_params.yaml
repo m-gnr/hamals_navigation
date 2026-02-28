@@ -1,0 +1,226 @@
+# hamals_navigation/config/nav2/nav2_params.yaml
+#
+# Bu dosya, HAMALS robotu için Nav2'nin temel parametre setidir.
+# Mimari sözleşme:
+#   - map -> odom : slam_toolbox (hamals_slam localization)
+#   - odom -> base_footprint : hamals_localization (TF broadcaster)
+#   - base_footprint -> base_link -> lidar_link : URDF / robot_state_publisher
+#   - /scan : LiDAR (frame_id=lidar_link)
+#   - /cmd_vel : Nav2 -> hamals_serial_bridge -> MCU
+#
+# Not: İlk test için hız/ivme/toleranslar bilinçli olarak düşük/gevşek tutuldu.
+#      Sistem stabil olduktan sonra limits.yaml'daki değerlere göre artırabilirsin.
+
+/**:
+  ros__parameters:
+    # Simülasyon kullanmıyorsan false kalmalı.
+    use_sim_time: false
+
+# ------------------------------------------------------------
+# AMCL ve map_server kapalı
+# ------------------------------------------------------------
+# Çünkü:
+#   - Lokalizasyonu slam_toolbox yapıyor (map->odom TF ve /map kaynağı)
+#   - AMCL açılırsa map->odom için ikinci yayıncı olur ve TF çakışır.
+#   - map_server da ayrı bir /map kaynağı olur (gereksiz/çakışabilir).
+
+amcl:
+  ros__parameters:
+    enabled: false
+
+map_server:
+  ros__parameters:
+    enabled: false
+
+# ------------------------------------------------------------
+# BT Navigator (Görev akışı / Behavior Tree)
+# ------------------------------------------------------------
+# Nav2'nin "goal'a git" mantığını yöneten ana katman.
+# global_frame=map (slam/localization düzeltmeli), base=base_footprint (2D)
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_footprint
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+
+# ------------------------------------------------------------
+# Planner (Global path üretimi)
+# ------------------------------------------------------------
+# Başlangıç için basit ve stabil: NavFn (GridBased)
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 5.0
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+
+# ------------------------------------------------------------
+# Controller (Local path takip) - RPP
+# ------------------------------------------------------------
+# Regulated Pure Pursuit: az param, hızlı stabil olur (pist/koridor için iyi).
+# Not: MCU tarafında ramp + PID + limitler olduğu için üst katmanı agresif tutmuyoruz.
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 20.0
+    odom_topic: /odom
+
+    # Plugin listeleri
+    controller_plugins: ["FollowPath"]
+    goal_checker_plugins: ["general_goal_checker"]
+    progress_checker_plugins: ["progress_checker"]
+
+    # --- RPP Controller ---
+    FollowPath:
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+
+      # İstenen doğrusal hız (m/s). max_linear_mps'den düşük olmalı.
+      desired_linear_vel: 0.20
+
+      # Doğrusal hızlanma/yavaşlama limitleri (m/s^2)
+      # Firmware rampı da olduğu için orta seviyede tutuyoruz.
+      max_linear_accel: 0.6
+      max_linear_decel: 0.6
+
+      # Heading'e dönerek başla (özellikle goal arkadaysa iyidir)
+      use_rotate_to_heading: true
+      rotate_to_heading_angular_vel: 0.8
+
+      # Açısal ivme limiti (rad/s^2)
+      max_angular_accel: 1.5
+
+      # Goal'a yaklaşımda mesafe toleransı (m)
+      goal_dist_tol: 0.10
+
+    # --- Goal Checker ---
+    general_goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      # Hedef (x,y) toleransı (m)
+      xy_goal_tolerance: 0.10
+      # Hedef yaw toleransı (rad) ~ 15°
+      yaw_goal_tolerance: 0.26
+      # Stateful=true: hedefe yaklaştığında fazla titremeyi azaltır
+      stateful: true
+
+    # --- Progress Checker ---
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      # Bu yarıçap kadar ilerleme bekler (m)
+      required_movement_radius: 0.10
+      # Bu süre içinde ilerleme olmazsa stuck sayar (s)
+      movement_time_allowance: 10.0
+
+# ------------------------------------------------------------
+# Behavior Server (Recovery davranışları)
+# ------------------------------------------------------------
+# Spin/Backup/Wait gibi "kurtarma" davranışları.
+
+behavior_server:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_footprint
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    behavior_plugins: ["spin", "backup", "wait"]
+
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+
+# ------------------------------------------------------------
+# Global Costmap (map frame)
+# ------------------------------------------------------------
+# Global plan için /map tabanlı costmap.
+# Başlangıçta sadece static + inflation yeterli.
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      global_frame: map
+      robot_base_frame: base_footprint
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      resolution: 0.05
+      track_unknown_space: true
+
+      # İlk etapta radius ile başla; sonra polygon footprint'e geçebilirsin.
+      robot_radius: 0.16
+
+      plugins: ["static_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        enabled: true
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        # Engel etrafında güvenlik şişirmesi (m)
+        inflation_radius: 0.35
+        cost_scaling_factor: 3.0
+
+# ------------------------------------------------------------
+# Local Costmap (odom frame)
+# ------------------------------------------------------------
+# Robotun yakın çevresi: engel algılama + kaçınma burada olur.
+# Rolling window: robotla birlikte kayan pencere.
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      global_frame: odom
+      robot_base_frame: base_footprint
+
+      rolling_window: true
+      width: 3.0
+      height: 3.0
+      resolution: 0.05
+
+      update_frequency: 10.0
+      publish_frequency: 5.0
+
+      robot_radius: 0.16
+
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+
+          # Pist/oda için makul başlangıç değerleri
+          max_obstacle_height: 0.50
+          obstacle_range: 2.5
+          raytrace_range: 4.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.30
+        cost_scaling_factor: 3.0
+
+# ------------------------------------------------------------
+# Lifecycle Manager
+# ------------------------------------------------------------
+# Nav2 node'larını otomatik "configure -> activate" eder.
+
+lifecycle_manager:
+  ros__parameters:
+    autostart: true
+    node_names:
+      - controller_server
+      - planner_server
+      - behavior_server
+      - bt_navigator
+      - global_costmap
+      - local_costmap
