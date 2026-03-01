@@ -1,28 +1,22 @@
 # hamals_navigation/config/nav2/nav2_params.yaml
 #
-# Bu dosya, HAMALS robotu için Nav2'nin temel parametre setidir.
 # Mimari sözleşme:
 #   - map -> odom : AMCL
-#   - odom -> base_footprint : hamals_localization (TF broadcaster)
+#   - odom -> base_footprint : EKF (hamals_localization)
 #   - base_footprint -> base_link -> lidar_link : URDF / robot_state_publisher
 #   - /scan : LiDAR (frame_id=lidar_link)
-#   - /cmd_vel : Nav2 -> hamals_serial_bridge -> MCU
-#
-# Not: İlk test için hız/ivme/toleranslar bilinçli olarak düşük/gevşek tutuldu.
-#      Sistem stabil olduktan sonra limits.yaml'daki değerlere göre artırabilirsin.
+#   - /cmd_vel : Nav2 -> (remap) -> serial_bridge -> MCU
 
 /**:
   ros__parameters:
-    # Simülasyon kullanmıyorsan false kalmalı.
     use_sim_time: false
-
 
 # ------------------------------------------------------------
 # Map Server (Sabit harita kaynağı)
 # ------------------------------------------------------------
 map_server:
   ros__parameters:
-    yaml_filename: "/home/murat/maps/hamals_map.yaml"
+    yaml_filename: "/home/m-gnr/maps/hamals_map.yaml"
 
 # ------------------------------------------------------------
 # AMCL (map -> odom üretir)
@@ -30,11 +24,17 @@ map_server:
 amcl:
   ros__parameters:
     use_sim_time: false
-    base_frame_id: base_footprint
-    odom_frame_id: odom
+
+    # Frame'ler
     global_frame_id: map
+    odom_frame_id: odom
+    base_frame_id: base_footprint
     scan_topic: /scan
 
+    # TF yayınlasın
+    tf_broadcast: true
+
+    # Particle ayarları (başlangıç için stabil)
     min_particles: 500
     max_particles: 2000
     update_min_d: 0.05
@@ -43,26 +43,40 @@ amcl:
     transform_tolerance: 0.5
 
 # ------------------------------------------------------------
-# BT Navigator (Görev akışı / Behavior Tree)
+# BT Navigator
 # ------------------------------------------------------------
-# Nav2'nin "goal'a git" mantığını yöneten ana katman.
-# global_frame=map (slam/localization düzeltmeli), base=base_footprint (2D)
+# bt_navigator'ın iki alt node'u var:
+#  - NavigateToPose
+#  - NavigateThroughPoses
+# İkisi de BT XML ister. Burada path'i kesin veriyoruz.
 
 bt_navigator:
   ros__parameters:
+    use_sim_time: false
     global_frame: map
     robot_base_frame: base_footprint
     odom_topic: /odom
     bt_loop_duration: 10
     default_server_timeout: 20
 
+# NavigateToPose BT
+bt_navigator_navigate_to_pose_rclcpp_node:
+  ros__parameters:
+    use_sim_time: false
+    default_bt_xml_filename: "/opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_w_replanning_and_recovery.xml"
+
+# NavigateThroughPoses BT (waypoints)
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: false
+    default_bt_xml_filename: "/opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml"
+
 # ------------------------------------------------------------
 # Planner (Global path üretimi)
 # ------------------------------------------------------------
-# Başlangıç için basit ve stabil: NavFn (GridBased)
-
 planner_server:
   ros__parameters:
+    use_sim_time: false
     expected_planner_frequency: 5.0
     planner_plugins: ["GridBased"]
     GridBased:
@@ -71,66 +85,43 @@ planner_server:
 # ------------------------------------------------------------
 # Controller (Local path takip) - RPP
 # ------------------------------------------------------------
-# Regulated Pure Pursuit: az param, hızlı stabil olur (pist/koridor için iyi).
-# Not: MCU tarafında ramp + PID + limitler olduğu için üst katmanı agresif tutmuyoruz.
-
 controller_server:
   ros__parameters:
+    use_sim_time: false
     controller_frequency: 20.0
     odom_topic: /odom
 
-    # Plugin listeleri
     controller_plugins: ["FollowPath"]
     goal_checker_plugins: ["general_goal_checker"]
     progress_checker_plugins: ["progress_checker"]
 
-    # --- RPP Controller ---
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-
-      # İstenen doğrusal hız (m/s). max_linear_mps'den düşük olmalı.
       desired_linear_vel: 0.20
-
-      # Doğrusal hızlanma/yavaşlama limitleri (m/s^2)
-      # Firmware rampı da olduğu için orta seviyede tutuyoruz.
       max_linear_accel: 0.6
       max_linear_decel: 0.6
-
-      # Heading'e dönerek başla (özellikle goal arkadaysa iyidir)
       use_rotate_to_heading: true
       rotate_to_heading_angular_vel: 0.8
-
-      # Açısal ivme limiti (rad/s^2)
       max_angular_accel: 1.5
-
-      # Goal'a yaklaşımda mesafe toleransı (m)
       goal_dist_tol: 0.10
 
-    # --- Goal Checker ---
     general_goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
-      # Hedef (x,y) toleransı (m)
       xy_goal_tolerance: 0.10
-      # Hedef yaw toleransı (rad) ~ 15°
       yaw_goal_tolerance: 0.26
-      # Stateful=true: hedefe yaklaştığında fazla titremeyi azaltır
       stateful: true
 
-    # --- Progress Checker ---
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      # Bu yarıçap kadar ilerleme bekler (m)
       required_movement_radius: 0.10
-      # Bu süre içinde ilerleme olmazsa stuck sayar (s)
       movement_time_allowance: 10.0
 
 # ------------------------------------------------------------
 # Behavior Server (Recovery davranışları)
 # ------------------------------------------------------------
-# Spin/Backup/Wait gibi "kurtarma" davranışları.
-
 behavior_server:
   ros__parameters:
+    use_sim_time: false
     global_frame: map
     robot_base_frame: base_footprint
     costmap_topic: local_costmap/costmap_raw
@@ -147,20 +138,16 @@ behavior_server:
 # ------------------------------------------------------------
 # Global Costmap (map frame)
 # ------------------------------------------------------------
-# Global plan için /map tabanlı costmap.
-# Başlangıçta sadece static + inflation yeterli.
-
 global_costmap:
   global_costmap:
     ros__parameters:
+      use_sim_time: false
       global_frame: map
       robot_base_frame: base_footprint
       update_frequency: 5.0
       publish_frequency: 2.0
       resolution: 0.05
       track_unknown_space: true
-
-      # İlk etapta radius ile başla; sonra polygon footprint'e geçebilirsin.
       robot_radius: 0.16
 
       plugins: ["static_layer", "inflation_layer"]
@@ -171,30 +158,25 @@ global_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        # Engel etrafında güvenlik şişirmesi (m)
         inflation_radius: 0.35
         cost_scaling_factor: 3.0
 
 # ------------------------------------------------------------
 # Local Costmap (odom frame)
 # ------------------------------------------------------------
-# Robotun yakın çevresi: engel algılama + kaçınma burada olur.
-# Rolling window: robotla birlikte kayan pencere.
-
 local_costmap:
   local_costmap:
     ros__parameters:
+      use_sim_time: false
       global_frame: odom
       robot_base_frame: base_footprint
 
       rolling_window: true
-      width: 3.0
-      height: 3.0
+      width: 3.0      # <-- ekle
+      height: 3.0     # <-- ekle
       resolution: 0.05
-
       update_frequency: 10.0
       publish_frequency: 5.0
-
       robot_radius: 0.16
 
       plugins: ["obstacle_layer", "inflation_layer"]
@@ -202,14 +184,12 @@ local_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
-        observation_sources: scan
+        observation_sources: "scan"
         scan:
           topic: /scan
           data_type: "LaserScan"
           marking: true
           clearing: true
-
-          # Pist/oda için makul başlangıç değerleri
           max_obstacle_height: 0.50
           obstacle_range: 2.5
           raytrace_range: 4.0
@@ -220,12 +200,11 @@ local_costmap:
         cost_scaling_factor: 3.0
 
 # ------------------------------------------------------------
-# Lifecycle Manager
+# Lifecycle Manager (nav2_bringup genelde bunu kullanır)
 # ------------------------------------------------------------
-# Nav2 node'larını otomatik "configure -> activate" eder.
-
-lifecycle_manager:
+lifecycle_manager_navigation:
   ros__parameters:
+    use_sim_time: false
     autostart: true
     node_names:
       - map_server
