@@ -9,14 +9,14 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
-    """HAMALS Nav2 (navigation-only) launch.
+    """HAMALS Nav2 (AMCL-based navigation-only) launch.
 
     Bu launch SADECE Nav2 navigation stack'ini başlatır.
     Aşağıdakiler kullanıcı tarafından MANUEL başlatılmalıdır:
       - hamals_serial_bridge (/odom + /cmd_vel relay)
       - hamals_localization (odom -> base_footprint TF + robot_state_publisher)
       - LiDAR driver (/scan)
-      - hamals_slam (slam_toolbox localization: map -> odom)
+      - map_server + AMCL (map -> odom TF üretimi Nav2 içinde yapılır)
     """
 
     # ------------------------------

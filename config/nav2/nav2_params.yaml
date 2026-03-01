@@ -2,7 +2,7 @@
 #
 # Bu dosya, HAMALS robotu için Nav2'nin temel parametre setidir.
 # Mimari sözleşme:
-#   - map -> odom : slam_toolbox (hamals_slam localization)
+#   - map -> odom : AMCL
 #   - odom -> base_footprint : hamals_localization (TF broadcaster)
 #   - base_footprint -> base_link -> lidar_link : URDF / robot_state_publisher
 #   - /scan : LiDAR (frame_id=lidar_link)
@@ -16,21 +16,31 @@
     # Simülasyon kullanmıyorsan false kalmalı.
     use_sim_time: false
 
-# ------------------------------------------------------------
-# AMCL ve map_server kapalı
-# ------------------------------------------------------------
-# Çünkü:
-#   - Lokalizasyonu slam_toolbox yapıyor (map->odom TF ve /map kaynağı)
-#   - AMCL açılırsa map->odom için ikinci yayıncı olur ve TF çakışır.
-#   - map_server da ayrı bir /map kaynağı olur (gereksiz/çakışabilir).
 
-amcl:
-  ros__parameters:
-    enabled: false
-
+# ------------------------------------------------------------
+# Map Server (Sabit harita kaynağı)
+# ------------------------------------------------------------
 map_server:
   ros__parameters:
-    enabled: false
+    yaml_filename: "/home/murat/maps/hamals_map.yaml"
+
+# ------------------------------------------------------------
+# AMCL (map -> odom üretir)
+# ------------------------------------------------------------
+amcl:
+  ros__parameters:
+    use_sim_time: false
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    global_frame_id: map
+    scan_topic: /scan
+
+    min_particles: 500
+    max_particles: 2000
+    update_min_d: 0.05
+    update_min_a: 0.05
+    resample_interval: 1
+    transform_tolerance: 0.5
 
 # ------------------------------------------------------------
 # BT Navigator (Görev akışı / Behavior Tree)
@@ -218,6 +228,8 @@ lifecycle_manager:
   ros__parameters:
     autostart: true
     node_names:
+      - map_server
+      - amcl
       - controller_server
       - planner_server
       - behavior_server
