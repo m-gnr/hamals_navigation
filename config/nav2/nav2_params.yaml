@@ -1,4 +1,5 @@
 # hamals_navigation/config/nav2/nav2_params.yaml
+<<<<<<< HEAD
 #
 # Mimari sözleşme:
 #   - map -> odom : AMCL
@@ -6,35 +7,44 @@
 #   - base_footprint -> base_link -> lidar_link : URDF / robot_state_publisher
 #   - /scan : LiDAR (frame_id=lidar_link)
 #   - /cmd_vel : Nav2 -> (remap) -> serial_bridge -> MCU
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 
 /**:
   ros__parameters:
     use_sim_time: false
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Map Server (Sabit harita kaynağı)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 map_server:
   ros__parameters:
     yaml_filename: "/home/m-gnr/maps/hamals_map.yaml"
 
-# ------------------------------------------------------------
-# AMCL (map -> odom üretir)
-# ------------------------------------------------------------
 amcl:
   ros__parameters:
     use_sim_time: false
+<<<<<<< HEAD
 
     # Frame'ler
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     global_frame_id: map
     odom_frame_id: odom
     base_frame_id: base_footprint
     scan_topic: /scan
+<<<<<<< HEAD
 
     # TF yayınlasın
     tf_broadcast: true
 
     # Particle ayarları (başlangıç için stabil)
+=======
+    tf_broadcast: true
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     min_particles: 500
     max_particles: 2000
     update_min_d: 0.05
@@ -42,6 +52,7 @@ amcl:
     resample_interval: 1
     transform_tolerance: 0.5
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # BT Navigator
 # ------------------------------------------------------------
@@ -50,6 +61,8 @@ amcl:
 #  - NavigateThroughPoses
 # İkisi de BT XML ister. Burada path'i kesin veriyoruz.
 
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 bt_navigator:
   ros__parameters:
     use_sim_time: false
@@ -59,21 +72,30 @@ bt_navigator:
     bt_loop_duration: 10
     default_server_timeout: 20
 
+<<<<<<< HEAD
 # NavigateToPose BT
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 bt_navigator_navigate_to_pose_rclcpp_node:
   ros__parameters:
     use_sim_time: false
     default_bt_xml_filename: "/opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_w_replanning_and_recovery.xml"
 
+<<<<<<< HEAD
 # NavigateThroughPoses BT (waypoints)
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 bt_navigator_navigate_through_poses_rclcpp_node:
   ros__parameters:
     use_sim_time: false
     default_bt_xml_filename: "/opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml"
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Planner (Global path üretimi)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 planner_server:
   ros__parameters:
     use_sim_time: false
@@ -82,19 +104,28 @@ planner_server:
     GridBased:
       plugin: "nav2_navfn_planner/NavfnPlanner"
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Controller (Local path takip) - RPP
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 controller_server:
   ros__parameters:
     use_sim_time: false
     controller_frequency: 20.0
     odom_topic: /odom
+<<<<<<< HEAD
 
     controller_plugins: ["FollowPath"]
     goal_checker_plugins: ["general_goal_checker"]
     progress_checker_plugins: ["progress_checker"]
 
+=======
+    controller_plugins: ["FollowPath"]
+    goal_checker_plugins: ["general_goal_checker"]
+    progress_checker_plugins: ["progress_checker"]
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       desired_linear_vel: 0.20
@@ -104,21 +135,30 @@ controller_server:
       rotate_to_heading_angular_vel: 0.8
       max_angular_accel: 1.5
       goal_dist_tol: 0.10
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     general_goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.10
       yaw_goal_tolerance: 0.26
       stateful: true
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.10
       movement_time_allowance: 10.0
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Behavior Server (Recovery davranışları)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 behavior_server:
   ros__parameters:
     use_sim_time: false
@@ -127,7 +167,6 @@ behavior_server:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     behavior_plugins: ["spin", "backup", "wait"]
-
     spin:
       plugin: "nav2_behaviors/Spin"
     backup:
@@ -135,9 +174,12 @@ behavior_server:
     wait:
       plugin: "nav2_behaviors/Wait"
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Global Costmap (map frame)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -149,38 +191,38 @@ global_costmap:
       resolution: 0.05
       track_unknown_space: true
       robot_radius: 0.16
-
       plugins: ["static_layer", "inflation_layer"]
-
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         enabled: true
-
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.35
         cost_scaling_factor: 3.0
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Local Costmap (odom frame)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: false
       global_frame: odom
       robot_base_frame: base_footprint
-
       rolling_window: true
+<<<<<<< HEAD
       width: 3.0      # <-- ekle
       height: 3.0     # <-- ekle
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
       resolution: 0.05
       update_frequency: 10.0
       publish_frequency: 5.0
       robot_radius: 0.16
-
       plugins: ["obstacle_layer", "inflation_layer"]
-
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
@@ -193,15 +235,17 @@ local_costmap:
           max_obstacle_height: 0.50
           obstacle_range: 2.5
           raytrace_range: 4.0
-
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.30
         cost_scaling_factor: 3.0
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # Lifecycle Manager (nav2_bringup genelde bunu kullanır)
 # ------------------------------------------------------------
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
 lifecycle_manager_navigation:
   ros__parameters:
     use_sim_time: false

@@ -1,5 +1,4 @@
 import os
-
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -8,7 +7,10 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     use_sim_time = LaunchConfiguration('use_sim_time')
     nav2_params_file = LaunchConfiguration('nav2_params_file')
     autostart = LaunchConfiguration('autostart')
@@ -16,7 +18,10 @@ def generate_launch_description():
 
     pkg_share = get_package_share_directory('hamals_navigation')
     nav2_params_default = os.path.join(pkg_share, 'config', 'nav2', 'nav2_params.yaml')
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     nav2_bringup_share = get_package_share_directory('nav2_bringup')
 
     declare_args = [
@@ -26,15 +31,22 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'map',
             default_value='/home/m-gnr/maps/hamals_map.yaml',
+<<<<<<< HEAD
             description='Full path to map yaml file.'
         ),
     ]
 
     # map_server + amcl -> map->odom TF üretir
+=======
+        ),
+    ]
+
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
     nav2_localization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_share, 'launch', 'localization_launch.py')
         ),
+<<<<<<< HEAD
         launch_arguments={
             'use_sim_time': use_sim_time,
             'params_file': nav2_params_file,
@@ -48,11 +60,30 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_share, 'launch', 'navigation_launch.py')
         ),
+=======
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
         launch_arguments={
             'use_sim_time': use_sim_time,
             'params_file': nav2_params_file,
+            'map': map_yaml_file,
             'autostart': autostart,
         }.items(),
     )
 
+<<<<<<< HEAD
     return LaunchDescription(declare_args + [nav2_localization, nav2_navigation])
+=======
+    nav2_navigation = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav2_bringup_share, 'launch', 'navigation_launch.py')
+        ),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'params_file': nav2_params_file,
+            'autostart': autostart,
+            'use_composition': 'False',
+        }.items(),
+    )
+
+    return LaunchDescription(declare_args + [nav2_localization, nav2_navigation])
+>>>>>>> 9819ddb (refine navigation launch setup and nav2 configuration)
